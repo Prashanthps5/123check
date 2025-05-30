@@ -61,18 +61,44 @@ export class ConclusionScene extends Phaser.Scene {
     });
 
     // Section 2: Transport Help Desk
-    const section2Title = this.add.text(contentX, 280, 'Transport Help Desk:', {
+    const section2Title = this.add.text(contentX, 300, 'Transport Help Desk:', {
       fontSize: '22px',
       color: '#000',
       fontStyle: 'bold',
     });
     fadeIn(this, section2Title);
 
-    const transportText = this.add.text(contentX, 320, 'For any transport-related assistance, please contact:\ntransport@company.com', {
-      fontSize: '18px',
-      color: '#1a73e8',
-      wordWrap: { width: this.scale.width - contentX - 20 },
+    const headers = ['Location', 'Contact Email'];
+    const data = [
+      ['Head Office', 'transport@company.com'],
+      ['Branch A', 'transport.a@company.com'],
+      ['Branch B', 'transport.b@company.com']
+    ];
+
+    const tableStartY = 340;
+    const columnWidths = [120, 300];
+
+    // Draw headers
+    headers.forEach((header, i) => {
+      const text = this.add.text(contentX + i * columnWidths[i], tableStartY, header, {
+        fontSize: '18px',
+        fontStyle: 'bold',
+        color: '#000'
+      });
+      fadeIn(this, text);
     });
-    fadeIn(this, transportText);
+
+    // Draw rows
+    data.forEach((row, rowIndex) => {
+      row.forEach((cell, colIndex) => {
+        const y = tableStartY + 30 + rowIndex * 25;
+        const x = contentX + colIndex * columnWidths[colIndex];
+        const text = this.add.text(x, y, cell, {
+          fontSize: '16px',
+          color: '#000'
+        });
+        fadeIn(this, text);
+      });
+    });
   }
 }

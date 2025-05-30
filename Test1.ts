@@ -1,4 +1,3 @@
-// scenes/conclusion.scene.ts
 import Phaser from 'phaser';
 
 export class ConclusionScene extends Phaser.Scene {
@@ -21,12 +20,13 @@ export class ConclusionScene extends Phaser.Scene {
     bg.setScale(scale);
     bg.setPosition(0, 0);
 
-    const contentX = bg.displayWidth / 2 + 40;
+    const imageWidth = bg.displayWidth;
+    const contentX = imageWidth + 20; // move content right after image
 
     const title = this.add.text(contentX, 40, 'Congratulations on Completing Day 1!', {
       fontSize: '26px',
       color: '#000',
-      wordWrap: { width: 760 - contentX },
+      wordWrap: { width: this.scale.width - contentX - 20 },
     });
     fadeIn(this, title);
 
@@ -71,7 +71,7 @@ export class ConclusionScene extends Phaser.Scene {
     const transportText = this.add.text(contentX, 320, 'For any transport-related assistance, please contact:\ntransport@company.com', {
       fontSize: '18px',
       color: '#1a73e8',
-      wordWrap: { width: 760 - contentX },
+      wordWrap: { width: this.scale.width - contentX - 20 },
     });
     fadeIn(this, transportText);
   }

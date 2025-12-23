@@ -1,0 +1,113 @@
+// Notifications.tsx
+import React, { useEffect, useState, useRef } from "react";
+import * as RSocketCore from "rsocket-core";
+import RSocketWebSocketClient from "rsocket-websocket-client";
+
+// ---------------------------
+// Minimal serializers
+// ---------------------------
+const JsonSerializer = {
+  encode: (data: any) => new TextEncoder().encode(JSON.stringify(data)),
+  decode: (data: Uint8Array) =>
+    JSON.parse(new TextDecoder().decode(data)),
+};
+
+const IdentitySerializer = {
+  encode: (data: any) => data,
+  decode: (data: any) => data,
+};
+
+// ---------------------------
+// Route encoding
+// ---------------------------
+function encodeRoute(route: string): Uint8Array {
+  const routeBytes = new TextEncoder().encode(route);
+  const buffer = new Uint8Array(1 + routeBytes.length);
+  buffer[0] = routeBytes.length;
+  buffer.set(routeBytes, 1);
+  return buffer;
+}
+
+// ---------------------------
+// React component
+// ---------------------------
+type Notification = {
+  message: string;
+  timestamp: string;
+};
+
+export default function Notifications() {
+  const [latest, setLatest] = useState<Notification | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const socketRef = useRef<any>(null);
+  const subscriptionRef = useRef<any>(null);
+
+  useEffect(() => {
+    const WS_URL = "ws://localhost:8080/rsocket"; // change to your server
+    const client = new RSocketCore.RSocketClient({
+      serializers: {
+        data: JsonSerializer,
+        metadata: IdentitySerializer,
+      },
+      setup: {
+        keepAlive: 30000,
+        lifetime: 120000,
+        dataMimeType: "application/json",
+        metadataMimeType: "message/x.rsocket.routing.v0",
+      },
+      transport: new RSocketWebSocketClient({ url: WS_URL }, Buffer),
+    });
+
+    const connection = client.connect().subscribe({
+      onComplete: (socket) => {
+        socketRef.current = socket;
+        setConnected(true);
+
+        subscriptionRef.current = socket
+          .requestStream({
+            data: {}, // optional payload
+            metadata: encodeRoute("notifications.stream"), // your route
+          })
+          .subscribe({
+            onNext: (payload: any) => {
+              setLatest(payload.data); // display only latest value
+            },
+            onError: (err: any) => setError(err.toString()),
+            onComplete: () => setConnected(false),
+          });
+      },
+      onError: (err) => setError(err.toString()),
+    });
+
+    return () => {
+      subscriptionRef.current?.cancel();
+      socketRef.current?.close();
+      connection.unsubscribe();
+    };
+  }, []);
+
+  return (
+    <div style={{ padding: 20 }}>
+      <h2>Live Notification</h2>
+      {!connected && <p>Connecting...</p>}
+      {error && <p style={{ color: "red" }}>Error: {error}</p>}
+      {latest ? (
+        <div
+          style={{
+            marginTop: 10,
+            padding: 10,
+            border: "1px solid #ccc",
+            borderRadius: 6,
+          }}
+        >
+          <strong>{latest.message}</strong> —{" "}
+          <em>{latest.timestamp}</em>
+        </div>
+      ) : (
+        <p>No notifications yet.</p>
+      )}
+    </div>
+  );
+}

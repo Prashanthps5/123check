@@ -129,3 +129,101 @@ export function useRSocketStream<T>(
 
   return { data, connected, error };
 }
+
+
+
+
+
+import React, { useEffect, useState } from "react";
+import {
+  RSocketClient,
+  JsonSerializers,
+  Payload,
+} from "rsocket-core";
+import RSocketWebSocketClient from "rsocket-websocket-client";
+
+type ServerMessage = {
+  message: string;
+};
+
+const App: React.FC = () => {
+  const [messages, setMessages] = useState<ServerMessage[]>([]);
+  const [status, setStatus] = useState<string>("Connecting...");
+
+  useEffect(() => {
+    const client = new RSocketClient<Payload, Payload>({
+      serializers: JsonSerializers,
+      setup: {
+        keepAlive: 60000,
+        lifetime: 180000,
+        dataMimeType: "application/json",
+        metadataMimeType: "application/json",
+      },
+      transport: new RSocketWebSocketClient(
+        {
+          url: "wss://rsocket-demo.herokuapp.com/rsocket",
+        },
+        { debug: true }
+      ),
+    });
+
+    let cancelStream: (() => void) | null = null;
+
+    client.connect().subscribe({
+      onComplete: (socket) => {
+        setStatus("Connected ✅");
+
+        socket
+          .requestStream({
+            data: { name: "React TSX User" },
+            metadata: null,
+          })
+          .subscribe({
+            onSubscribe: (sub) => {
+              cancelStream = () => sub.cancel();
+              sub.request(2147483647); // request max items
+            },
+            onNext: (payload) => {
+              setMessages((prev) => [
+                ...prev,
+                payload.data as ServerMessage,
+              ]);
+            },
+            onError: (error) => {
+              console.error(error);
+              setStatus("Stream error ❌");
+            },
+            onComplete: () => {
+              setStatus("Stream completed");
+            },
+          });
+      },
+      onError: (error) => {
+        console.error(error);
+        setStatus("Connection failed ❌");
+      },
+    });
+
+    return () => {
+      if (cancelStream) {
+        cancelStream();
+      }
+    };
+  }, []);
+
+  return (
+    <div style={{ padding: 20 }}>
+      <h2>React 18 + RSocket (TSX)</h2>
+      <p>Status: {status}</p>
+
+      <h3>Messages</h3>
+      <ul>
+        {messages.map((msg, idx) => (
+          <li key={idx}>{msg.message}</li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default App;

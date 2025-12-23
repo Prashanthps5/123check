@@ -227,3 +227,33 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+
+const {
+  RSocketServer,
+  JsonSerializers,
+} = require("rsocket-core");
+const RSocketWebSocketServer = require("rsocket-websocket-server").default;
+
+const server = new RSocketServer({
+  serializers: JsonSerializers,
+  transport: new RSocketWebSocketServer({
+    port: 7000,
+    path: "/rsocket",
+  }),
+  getRequestHandler: () => ({
+    requestResponse: (payload) => {
+      return {
+        subscribe: (subscriber) => {
+          subscriber.onNext({
+            data: { message: "Echo: " + payload.data.name },
+          });
+          subscriber.onComplete();
+        },
+      };
+    },
+  }),
+});
+
+server.start();
+console.log("RSocket server running on ws://localhost:7000/rsocket");

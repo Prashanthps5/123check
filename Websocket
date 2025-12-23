@@ -1,0 +1,131 @@
+// rsocketClient.ts
+import {
+  RSocketClient,
+  JsonSerializer,
+  IdentitySerializer,
+  encodeRoute,
+} from "rsocket-core";
+import RSocketWebSocketClient from "rsocket-websocket-client";
+
+const WS_URL = "ws://localhost:8080/rsocket";
+
+export function createRSocketClient() {
+  return new RSocketClient({
+    serializers: {
+      data: JsonSerializer,
+      metadata: IdentitySerializer,
+    },
+
+    setup: {
+      keepAlive: 30000,
+      lifetime: 120000,
+      dataMimeType: "application/json",
+      metadataMimeType: "message/x.rsocket.routing.v0",
+    },
+
+    transport: new RSocketWebSocketClient(
+      { url: WS_URL },
+      Buffer
+    ),
+  });
+}
+
+export { encodeRoute };
+
+
+// rsocketManager.ts
+import { createRSocketClient } from "./rsocketClient";
+
+const MAX_RETRIES = Infinity;
+const RECONNECT_DELAY = 3000;
+
+export class RSocketManager {
+  private socket: any = null;
+  private retries = 0;
+  private closedByUser = false;
+
+  connect(onConnect: (socket: any) => void, onError?: (e: any) => void) {
+    const client = createRSocketClient();
+
+    client.connect().subscribe({
+      onComplete: (socket) => {
+        this.socket = socket;
+        this.retries = 0;
+        onConnect(socket);
+      },
+
+      onError: (error) => {
+        if (this.closedByUser) return;
+
+        onError?.(error);
+
+        if (this.retries < MAX_RETRIES) {
+          this.retries++;
+          setTimeout(() => this.connect(onConnect, onError), RECONNECT_DELAY);
+        }
+      },
+    });
+  }
+
+  close() {
+    this.closedByUser = true;
+    this.socket?.close();
+  }
+}
+
+
+
+
+
+// useRSocketStream.ts
+import { useEffect, useRef, useState } from "react";
+import { encodeRoute } from "./rsocketClient";
+import { RSocketManager } from "./rsocketManager";
+
+export function useRSocketStream<T>(
+  route: string,
+  requestData?: any
+) {
+  const managerRef = useRef<RSocketManager>();
+  const subscriptionRef = useRef<any>();
+
+  const [data, setData] = useState<T[]>([]);
+  const [connected, setConnected] = useState(false);
+  const [error, setError] = useState<any>(null);
+
+  useEffect(() => {
+    managerRef.current = new RSocketManager();
+
+    managerRef.current.connect(
+      (socket) => {
+        setConnected(true);
+        setError(null);
+
+        subscriptionRef.current = socket
+          .requestStream({
+            data: requestData ?? {},
+            metadata: encodeRoute(route),
+          })
+          .subscribe({
+            onNext: (payload) =>
+              setData((prev) => [...prev, payload.data]),
+
+            onError: (err) => {
+              setConnected(false);
+              setError(err);
+            },
+
+            onComplete: () => setConnected(false),
+          });
+      },
+      (err) => setError(err)
+    );
+
+    return () => {
+      subscriptionRef.current?.cancel();
+      managerRef.current?.close();
+    };
+  }, [route]);
+
+  return { data, connected, error };
+}

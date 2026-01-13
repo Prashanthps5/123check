@@ -1,0 +1,156 @@
+import React from "react";
+import "./statusStepper.css"; // <-- include CSS file
+
+export default function StatusStepper({ steps }) {
+  return (
+    <div className="status-stepper-container">
+      {steps.map((step, index) => (
+        <div key={index} className="status-step-row">
+          
+          {/* Left side: dot + vertical line */}
+          <div className="status-step-left">
+            <div
+              className={`status-circle ${
+                index === steps.length - 1 ? "status-circle-active" : ""
+              }`}
+            ></div>
+
+            {index < steps.length - 1 && <div className="status-vertical-line"></div>}
+          </div>
+
+          {/* Right side: content */}
+          <div className="status-step-content">
+            <div className="status-title">{step.status}</div>
+
+            <div className="status-meta">
+              Changed by: <span className="status-meta-bold">{step.changedBy}</span>
+            </div>
+
+            <div className="status-meta">
+              On: <span className="status-meta-bold">{step.changedAt}</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+.status-stepper-container {
+  width: 350px;
+  padding: 10px;
+  font-family: Arial, sans-serif;
+}
+
+/* Each row of the stepper */
+.status-step-row {
+  display: flex;
+}
+
+/* Left side: dot + line */
+.status-step-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 12px;
+}
+
+/* Dot */
+.status-circle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: gray;
+}
+
+.status-circle-active {
+  background: green;
+}
+
+/* Vertical Line */
+.status-vertical-line {
+  width: 2px;
+  height: 50px;
+  background: #ccc;
+}
+
+/* Right side content */
+.status-step-content {
+  padding-bottom: 20px;
+}
+
+.status-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.status-meta {
+  color: #555;
+  font-size: 12px;
+}
+
+.status-meta-bold {
+  font-weight: 600;
+  color: #333;
+} 
+
+
+
+const workflow = [
+  {
+    status: "Request Submitted",
+    changedBy: "John Doe",
+    changedAt: "2025-01-12 10:30 AM"
+  },
+  {
+    status: "Manager Approved",
+    changedBy: "Lisa Ray",
+    changedAt: "2025-01-13 02:15 PM"
+  },
+  {
+    status: "Processing",
+    changedBy: "System",
+    changedAt: "2025-01-14 09:00 AM"
+  },
+  {
+    status: "Completed",
+    changedBy: "System",
+    changedAt: "2025-01-14 04:45 PM"
+  }
+];
+
+<StatusStepper steps={workflow} />
+
+
+.status-step-row {
+  display: flex;
+}
+
+/* Make left side stretch match the content's height */
+.status-step-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 12px;
+}
+
+/* Circle */
+.status-circle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: gray;
+}
+
+.status-circle-active {
+  background: green;
+}
+
+/* THIS IS THE FIX */
+.status-vertical-line {
+  width: 2px;
+  flex: 1;          /* Auto expand */
+  background: #ccc;
+}
